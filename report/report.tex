@@ -1,0 +1,367 @@
+\documentclass{report}
+\usepackage{amsmath,amssymb}
+\usepackage{amssymb,amsmath,amsthm}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{enumitem}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Theorem}
+
+\title{Mathematical Model for TalentBridge Connect Team Selection Problem}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\chapter{Problem Definition}
+
+The TalentBridge Connect Team Selection Problem is a \textbf{Weighted Set Cover Problem with Proficiency Constraints}, which is NP-hard.
+
+\section{Weighted Set Cover}
+
+% ...
+
+\section{Formal Input Model}
+
+Let:
+\begin{itemize}
+    \item $\mathbf{S} = \{s_1, s_2, \ldots, s_n\}$ be the set of $n$ required skills
+    \item For each skill $s_i \in S$, let $r_i \in \mathbb{Z}^+$ be the required proficiency level
+    \item $\mathbf{F} = \{f_1, f_2, \ldots, f_m\}$ be the set of $m$ available freelancers
+\end{itemize}
+
+For each freelancer $f_j \in F$:
+\begin{itemize}
+    \item $w_j \in \mathbb{R}^+$ is the hourly wage (cost)
+    \item $\mathbf{T_j} \subseteq S$ is the subset of skills freelancer $f_j$ possesses
+    \item For each skill $s \in T_j$, let $c_{js} \in \mathbb{Z}^+$ be the competency level
+\end{itemize}
+
+\section{Constraints}
+
+\subsection{Coverage Constraint}
+For every skill $s_i \in S$, there must exist at least one freelancer $f_j$ in the selected team such that:
+\begin{itemize}
+    \item $s_i \in T_j$ (freelancer has the skill)
+    \item $c_{ji} \geq r_i$ (freelancer's competency meets or exceeds required level)
+\end{itemize}
+
+\textbf{Mathematically}:
+\[
+\forall s_i \in S, \exists f_j \in F' \text{ such that: } s_i \in T_j \land c_{ji} \geq r_i
+\]
+where $F' \subseteq F$ is the selected team.
+
+\section{Objective Function}
+
+Minimize the total cost:
+\[
+\text{minimize} \sum_{f_j \in F'} w_j
+\]
+
+\section{Decision Variables}
+
+Let $x_j \in \{0, 1\}$ be binary variables indicating whether freelancer $f_j$ is selected:
+\[
+x_j = 
+\begin{cases} 
+1 & \text{if freelancer } f_j \text{ is selected} \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+\section{Integer Linear Programming Formulation}
+
+\begin{align*}
+\text{minimize} \quad & \sum_{j} w_j \cdot x_j \\
+\text{subject to} \quad & \sum_{\substack{j: s_i \in T_j \\ c_{ji} \geq r_i}} x_j \geq 1, \quad \forall s_i \in S \\
+& x_j \in \{0, 1\}, \quad \forall f_j \in F
+\end{align*}
+
+\section{Bitmask Representation}
+
+Define for each freelancer $f_j$ a \textbf{coverage mask} $M_j \in \{0, 1\}^n$:
+\[
+M_j[i] = 
+\begin{cases} 
+1 & \text{if } s_i \in T_j \land c_{ji} \geq r_i \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+The problem becomes: find the subset $F' \subseteq F$ that minimizes $\sum_{j \in F'} w_j$ such that:
+\[
+\bigvee_{j \in F'} M_j = \{1\}^n \quad \text{(bitwise OR of all selected masks equals full coverage)}
+\]
+
+\section{Output Specification}
+
+The solution is a tuple $(C^*, F^*)$:
+\begin{itemize}
+    \item $C^* \in \mathbb{R}^+$: minimum total cost (sum of wages)
+    \item $F^* \subseteq F$: optimal team of freelancers
+\end{itemize}
+
+If no team can cover all requirements, return $(\infty, \emptyset)$.
+
+\section{Computational Complexity}
+
+\subsection{Complexity Classification}
+
+\textbf{Theorem}: This problem is \textbf{NP-hard}.
+
+\textbf{Proof}: 
+\begin{itemize}
+    \item When all competency levels are 1--that is the candidate is either competent enough in the skill required or he is not--, the problem reduces to the \textbf{Weighted Set Cover Problem}, which is known to be NP-hard.
+    \item The general case with competency levels is at least as hard.
+\end{itemize}
+
+\subsection{Time Complexity Analysis}
+
+\begin{itemize}
+    \item \textbf{Brute Force}: $O(2^m \cdot m \cdot n)$ - check all subsets of freelancers
+    \item \textbf{Dynamic Programming with Bitmask}: $O(m \cdot 2^n)$ - feasible when $n \leq 20$
+    \item \textbf{Approximation}: $O(m \cdot n)$ for greedy $(\ln n)$-approximation algorithms
+\end{itemize}
+
+\subsection{Space Complexity}
+
+\begin{itemize}
+    \item \textbf{DP Solution}: $O(2^n)$ for storing intermediate states
+\end{itemize}
+
+\section{Problem Classification}
+
+\begin{itemize}
+    \item \textbf{Type}: Combinatorial Optimization
+    \item \textbf{Class}: NP-hard
+    \item \textbf{Special Cases}:
+    \begin{itemize}
+        \item \textbf{Polynomial}: When each freelancer covers exactly one skill $\rightarrow$ Assignment Problem
+        \item \textbf{Polynomial}: When $m$ is small $\rightarrow$ Brute force feasible
+        \item \textbf{Polynomial}: When $n$ is small $\rightarrow$ DP with bitmask feasible
+    \end{itemize}
+\end{itemize}
+
+\section{Practical Considerations}
+
+For real-world instances where $n > 20$, we would need:
+\begin{enumerate}
+    \item \textbf{Approximation algorithms} (greedy, LP rounding)
+    \item \textbf{Heuristic methods} (genetic algorithms, local search)
+    \item \textbf{Commercial integer programming solvers}
+    \item \textbf{Problem decomposition} techniques
+\end{enumerate}
+
+\chapter{Algorithmic Analysis and Complexity Proofs}
+
+\section{Polynomial-Time Reduction}
+
+We first prove that the reduction from the original problem with $m$ freelancers to the bitmask representation has polynomial time complexity and produces an instance where the state space is bounded.
+
+\begin{theorem}[Reduction Complexity]
+The preprocessing step that converts $m$ freelancers to relevant skill masks runs in $O(m \cdot n)$ time and produces at most $\min(2^n, m)$ distinct masks.
+\end{theorem}
+
+\begin{proof}
+For each freelancer $f_j$, we check $n$ skills, performing constant-time operations for each skill check and bitmask update. The total operations are:
+\[
+\sum_{j=1}^m O(n) = O(m \cdot n)
+\]
+The number of distinct masks is trivially bounded by $2^n$ (all possible skill combinations) and also by $m$ (number of input freelancers), giving $\min(2^n, m)$.
+\end{proof}
+
+\subsection{Brute-Force Algorithm Analysis}
+
+\begin{theorem}[Brute-Force Complexity]
+The brute-force algorithm has time complexity $O(\min(2^n, m) \cdot 2^{\min(2^n, m)})$ and space complexity $O(\min(2^n, m))$.
+\end{theorem}
+
+\begin{proof}
+Let $k = \min(2^n, m)$ be the number of distinct masks after reduction. The algorithm:
+
+1. Generates all subsets of masks: $\sum_{i=1}^k \binom{k}{i} = 2^k$ subsets
+2. For each subset, checks coverage: $O(n)$ operations
+3. For valid covers, computes cost: $O(k)$ operations
+
+Total time: $O(2^k \cdot (n + k)) = O(2^k \cdot k)$ since $k \geq n$ in non-trivial cases.
+
+Space complexity is dominated by storing $k$ masks and their optimal freelancers.
+\end{proof}
+
+\subsection{Dynamic Programming Algorithm Analysis}
+
+\begin{theorem}[DP Algorithm Complexity]
+The dynamic programming algorithm has time complexity $O(m \cdot n + k \cdot 2^n)$ and space complexity $O(2^n)$, where $k = \min(2^n, m)$.
+\end{theorem}
+
+\begin{proof}
+The algorithm consists of:
+
+- \textbf{Reduction phase}: $O(m \cdot n)$ as established
+
+- \textbf{DP initialization}: $O(2^n)$ for initializing the DP table (it could be O(1) if we simply $malloc$ to reseve memory but the array would be full of garbage. This, of course, assuming the memory allocation is independent of the input; which is false, but useful)
+
+- \textbf{DP computation}: For each of $k$ masks, iterate through $2^n$ states: $O(k \cdot 2^n)$
+
+Total time: $O(m \cdot n + 2^n + k \cdot 2^n) = O(m \cdot n + k \cdot 2^n)$
+
+Space is dominated by the DP table of size $2^n$.
+\end{proof}
+
+\subsection{Optimality Guarantees}
+
+\begin{theorem}[Solution Optimality]
+Both algorithms guarantee finding the optimal solution when one exists.
+\end{theorem}
+
+\begin{proof}
+\textbf{Brute-force}: Examines all possible team combinations, guaranteeing optimality.
+
+\textbf{DP algorithm}: Uses dynamic programming with complete state representation. The DP transition:
+\[
+dp[new\_mask] = \min(dp[new\_mask], dp[current\_mask] + cost(mask))
+\]
+systematically explores all possible ways to achieve each skill coverage state, guaranteeing the optimal solution is found.
+\end{proof}
+
+\subsection{Empirical Performance Comparison}
+
+The theoretical analysis is supported by empirical observations:
+
+\begin{itemize}
+\item \textbf{Small $n$ ($\leq 10$)}: Both algorithms perform well, with DP showing better scaling with $m$
+\item \textbf{Medium $n$ ($11-20$)}: DP algorithm remains feasible while brute-force becomes impractical
+\item \textbf{Large $n$ ($> 20$)}: Both algorithms face challenges, necessitating approximation approaches
+\end{itemize}
+
+This analysis justifies our algorithmic approach and demonstrates that the exponential factor is well-controlled in practical deployment scenarios.
+
+\section{Greedy Approximation Algorithm}
+
+\subsection{Greedy Algorithm Description}
+
+The greedy algorithm for the team selection problem iteratively selects the most cost-effective freelancer at each step, where cost-effectiveness is defined as the ratio of wage to the number of newly covered skills.
+
+\begin{algorithm}
+\caption{Greedy Team Selection Algorithm}
+\begin{algorithmic}
+\REQUIRE Project requirements, list of freelancers
+\ENSURE Team of freelancers covering all skills with approximate minimum cost
+\STATE Let $U$ be the set of uncovered skills (initially all skills)
+\STATE Let $T$ be the selected team (initially empty)
+\STATE Let $total\_cost \gets 0$
+\WHILE{$U \neq \emptyset$}
+    \FOR{each freelancer $f_j$ not in $T$}
+        \STATE $new\_cover \gets \{s_i \in U : s_i \in T_j \land c_{ji} \geq r_i\}$
+        \STATE $effectiveness \gets w_j / |new\_cover|$
+    \ENDFOR
+    \STATE Select freelancer $f_k$ with minimum effectiveness ratio
+    \STATE $T \gets T \cup \{f_k\}$
+    \STATE $total\_cost \gets total\_cost + w_k$
+    \STATE $U \gets U \setminus new\_cover_k$
+\ENDWHILE
+\RETURN $total\_cost, T$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Approximation Ratio Analysis}
+
+\begin{theorem}[Greedy Approximation Bound]
+The greedy algorithm achieves an approximation ratio of $H_d$, where $d = \max_{j} |T_j|$ is the maximum number of skills covered by any freelancer, and $H_d = \sum_{i=1}^d \frac{1}{i}$ is the $d$-th harmonic number.
+\end{theorem}
+
+\begin{proof}
+Let $OPT$ be the optimal cost and $GREEDY$ be the cost of the greedy solution.
+
+We use the charging argument: when the greedy algorithm selects a freelancer covering $k$ new skills at cost $c$, we charge $\frac{c}{k}$ to each newly covered skill.
+
+Let $C(s_i)$ be the total charge to skill $s_i$ over the algorithm's execution. Then:
+\[
+GREEDY = \sum_{i=1}^n C(s_i)
+\]
+
+Now, consider the optimal solution $F^*$. For each freelancer $f_j \in F^*$ with cost $w_j$ covering skills $T_j$, we analyze the charges to skills in $T_j$.
+
+At any point in the greedy algorithm where skills in $T_j$ are not yet covered, the effectiveness ratio of $f_j$ is $\frac{w_j}{|T_j \cap U|}$, where $U$ is the set of uncovered skills.
+
+By the greedy choice property, when the algorithm selects a freelancer covering $k$ skills at cost-per-skill $\alpha$, we have:
+\[
+\alpha \leq \frac{w_j}{|T_j \cap U|}
+\]
+for all available freelancers $f_j$.
+
+Now, order the skills in $T_j$ by when they were covered in the greedy algorithm: $s_1, s_2, \ldots, s_{|T_j|}$. When skill $s_k$ is covered, at least $|T_j| - k + 1$ skills from $T_j$ remain uncovered. Therefore, the cost charged to $s_k$ is at most:
+\[
+C(s_k) \leq \frac{w_j}{|T_j| - k + 1}
+\]
+
+Summing over all skills in $T_j$:
+\[
+\sum_{s_i \in T_j} C(s_i) \leq w_j \cdot \sum_{k=1}^{|T_j|} \frac{1}{|T_j| - k + 1} = w_j \cdot H_{|T_j|}
+\]
+
+Since each skill is covered by at least one freelancer in $F^*$, we have:
+\[
+GREEDY = \sum_{i=1}^n C(s_i) \leq \sum_{f_j \in F^*} \sum_{s_i \in T_j} C(s_i) \leq \sum_{f_j \in F^*} w_j \cdot H_{|T_j|} \leq H_d \cdot OPT
+\]
+
+Thus, $GREEDY \leq H_d \cdot OPT$.
+\end{proof}
+
+\subsection{Tightness of the Bound}
+
+\begin{theorem}[Tightness]
+The $H_d$ approximation bound is tight for the greedy algorithm.
+\end{theorem}
+
+\begin{proof}
+This follows from the known tight examples for set cover. Consider an instance with $d$ skills and $d+1$ freelancers:
+\begin{itemize}
+\item Freelancer $f_0$: covers all skills, cost = $1 + \epsilon$
+\item Freelancers $f_1, \ldots, f_d$: each covers one distinct skill, cost = $\frac{1}{i}$ for $f_i$
+\end{itemize}
+
+The greedy algorithm will select $f_d, f_{d-1}, \ldots, f_1$ in sequence, with total cost $H_d$, while the optimal solution is $f_0$ with cost $1 + \epsilon$. As $\epsilon \to 0$, the ratio approaches $H_d$.
+\end{proof}
+
+\subsection{Time Complexity}
+
+\begin{theorem}[Greedy Algorithm Complexity]
+The greedy algorithm runs in $O(m^2 \cdot n)$ time.
+\end{theorem}
+
+\begin{proof}
+In the worst case:
+\begin{itemize}
+\item The while loop runs at most $n$ iterations (one freelancer per skill)
+\item Each iteration checks all $m$ freelancers
+\item Each freelancer check requires $O(n)$ operations to compute newly covered skills
+\end{itemize}
+Thus total time: $O(n \cdot m \cdot n) = O(m \cdot n^2)$.
+
+However, in practice, the number of iterations is bounded by the number of freelancers selected, which is at most $m$, giving $O(m^2 \cdot n)$.
+\end{proof}
+
+\subsection{Hybrid Approach}
+
+In practice, we can combine the greedy approach with exact methods:
+
+\begin{algorithm}
+\caption{Hybrid Greedy-DP Algorithm}
+\begin{algorithmic}
+\STATE Use greedy algorithm to get upper bound $UB$
+\STATE Run DP algorithm but prune branches exceeding $UB$
+\STATE Return best solution found
+\end{algorithmic}
+\end{algorithm}
+
+This approach leverages the greedy solution's quality to dramatically reduce the DP search space while maintaining optimality guarantees.
+
+
+Alternatively, we could use the exact algorithm for small $n$ (most cases) and the greedy for the rest. The correct approach depends of the problem/use-case.
+
+\end{document}

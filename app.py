@@ -99,7 +99,7 @@ class FreelancerMatchingAnalyzer:
                 relevant_freelancers[mask] = (fid, wage)
 
         # check every combination
-        # n*n*2^n
+        # 4^n (bounded by m)
         minima = float("inf")
         candidates = []
         if reduce(or_, relevant_freelancers) != full_mask:
@@ -117,6 +117,75 @@ class FreelancerMatchingAnalyzer:
                         minima = total_wage
                         candidates = fs
         return minima, candidates
+
+
+    def find_optimal_team(self, project, freelancers):
+        """Optimized solution with early pruning using DP with bitmasking"""
+        skills = sorted(project["required_skills"])
+        n = len(skills)
+        full_mask = (1 << n) - 1
+
+        # Filter relevant freelancers and compute their skill masks
+        relevant_freelancers = {}
+        for freelancer in freelancers:
+            mask = 0
+            freelancer_skills_dict = dict(
+                zip(freelancer["skills"], freelancer["competencies"])
+            )
+            for i, skill in enumerate(skills):
+                req_level = project["required_competencies"][i]
+                if (
+                    skill in freelancer_skills_dict
+                    and freelancer_skills_dict[skill] >= req_level
+                ):
+                    mask |= 1 << i
+            if not mask:
+                continue
+
+            fid, wage = freelancer["id"], freelancer["wage"]
+            if mask in relevant_freelancers:
+                if wage < relevant_freelancers[mask][1]:
+                    relevant_freelancers[mask] = (fid, wage)
+            else:
+                relevant_freelancers[mask] = (fid, wage)
+
+        # Check if coverage is possible
+        if not relevant_freelancers or reduce(lambda x, y: x | y, relevant_freelancers.keys()) != full_mask:
+            return float("inf"), []
+
+        # DP array: dp[mask] = (min_cost, freelancer_ids)
+        dp = [None] * (full_mask + 1)
+        dp[0] = (0, [])  # Base case: no skills covered, zero cost
+
+        # Sort freelancers by wage to try cheaper ones first (helps with pruning)
+        sorted_freelancers = sorted(relevant_freelancers.items(), key=lambda x: x[1][1])
+
+        min_cost = float("inf")
+        best_team = []
+
+        # 4^n
+        for mask, (fid, wage) in sorted_freelancers:
+            # Iterate through all current states in reverse to avoid reusing the same freelancer
+            for current_mask in range(full_mask, -1, -1):
+                if dp[current_mask] is None:
+                    continue
+
+                new_mask = current_mask | mask
+                new_cost = dp[current_mask][0] + wage
+
+                # Early pruning: if we already exceed the best known cost, skip
+                if new_cost >= min_cost:
+                    continue
+
+                if dp[new_mask] is None or new_cost < dp[new_mask][0]:
+                    dp[new_mask] = (new_cost, dp[current_mask][1] + [fid])
+
+                    # Update best solution if we found full coverage
+                    if new_mask == full_mask and new_cost < min_cost:
+                        min_cost = new_cost
+                        best_team = dp[new_mask][1]
+
+        return (min_cost, best_team) if min_cost != float("inf") else (float("inf"), [])
 
     def find_optimal_team_greedy(self, project, freelancers):
         """Greedy algorithm for team selection - faster but suboptimal"""
@@ -198,73 +267,6 @@ class FreelancerMatchingAnalyzer:
             return float("inf"), []  # Failed to cover all skills
 
         return total_cost, selected_team
-
-    def find_optimal_team(self, project, freelancers):
-        """Optimized solution with early pruning using DP with bitmasking"""
-        skills = sorted(project["required_skills"])
-        n = len(skills)
-        full_mask = (1 << n) - 1
-
-        # Filter relevant freelancers and compute their skill masks
-        relevant_freelancers = {}
-        for freelancer in freelancers:
-            mask = 0
-            freelancer_skills_dict = dict(
-                zip(freelancer["skills"], freelancer["competencies"])
-            )
-            for i, skill in enumerate(skills):
-                req_level = project["required_competencies"][i]
-                if (
-                    skill in freelancer_skills_dict
-                    and freelancer_skills_dict[skill] >= req_level
-                ):
-                    mask |= 1 << i
-            if not mask:
-                continue
-
-            fid, wage = freelancer["id"], freelancer["wage"]
-            if mask in relevant_freelancers:
-                if wage < relevant_freelancers[mask][1]:
-                    relevant_freelancers[mask] = (fid, wage)
-            else:
-                relevant_freelancers[mask] = (fid, wage)
-
-        # Check if coverage is possible
-        if not relevant_freelancers or reduce(lambda x, y: x | y, relevant_freelancers.keys()) != full_mask:
-            return float("inf"), []
-
-        # DP array: dp[mask] = (min_cost, freelancer_ids)
-        dp = [None] * (full_mask + 1)
-        dp[0] = (0, [])  # Base case: no skills covered, zero cost
-
-        # Sort freelancers by wage to try cheaper ones first (helps with pruning)
-        sorted_freelancers = sorted(relevant_freelancers.items(), key=lambda x: x[1][1])
-
-        min_cost = float("inf")
-        best_team = []
-
-        for mask, (fid, wage) in sorted_freelancers:
-            # Iterate through all current states in reverse to avoid reusing the same freelancer
-            for current_mask in range(full_mask, -1, -1):
-                if dp[current_mask] is None:
-                    continue
-
-                new_mask = current_mask | mask
-                new_cost = dp[current_mask][0] + wage
-
-                # Early pruning: if we already exceed the best known cost, skip
-                if new_cost >= min_cost:
-                    continue
-
-                if dp[new_mask] is None or new_cost < dp[new_mask][0]:
-                    dp[new_mask] = (new_cost, dp[current_mask][1] + [fid])
-
-                    # Update best solution if we found full coverage
-                    if new_mask == full_mask and new_cost < min_cost:
-                        min_cost = new_cost
-                        best_team = dp[new_mask][1]
-
-        return (min_cost, best_team) if min_cost != float("inf") else (float("inf"), [])
 
     def find_optimal_team_hybrid(self, project, freelancers, bf_threshold=8):
         """Hybrid approach: use DP for small problems, greedy for large ones"""
