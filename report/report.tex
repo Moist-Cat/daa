@@ -22,7 +22,47 @@ The TalentBridge Connect Team Selection Problem is a \textbf{Weighted Set Cover 
 
 \section{Weighted Set Cover}
 
-% ...
+\begin{theorem}
+The Weighted Set Cover Problem with Proficiency Constraints can solve the Set Cover problem \cite{kleinberg2005algorithmG}.
+\end{theorem}
+
+\begin{proof}
+Consider an instance \( I = (U, \mathcal{C}) \) of the Set Cover problem, where:
+
+- \( U = \{e_1, e_2, \dots, e_n\} \) is the universe of elements,
+
+- \( \mathcal{C} = \{S_1, S_2, \dots, S_m\} \) is a collection of subsets of \( U \).
+
+We construct an instance \( I' \) of the Weighted Set Cover with Proficiency Constraints as follows:
+\begin{enumerate}
+    \item Let the set of required skills be \( \mathbf{S} = U \).
+    \item For each skill \( e_i \in \mathbf{S} \), set the required proficiency level \( r_i = 1 \).
+    \item For each set \( S_j \in \mathcal{C} \), create a freelancer \( f_j \) such that:
+    \begin{itemize}
+        \item \( f_j \) possesses exactly the skills in \( S_j \).
+        \item For each skill \( s \in S_j \), set \( f_j \)'s proficiency in \( s \) to 1.
+    \end{itemize}
+    \item Set the weight (cost) of each freelancer \( f_j \) to 1.
+\end{enumerate}
+
+Now, observe that in \( I' \):
+
+- A team of freelancers \( T \subseteq \{f_1, f_2, \dots, f_m\} \) covers a skill \( e_i \) if and only if at least one freelancer in \( T \) has \( e_i \) in their skill set (with proficiency 1, meeting the required proficiency \( r_i = 1 \)).
+
+- Thus, \( T \) covers all skills in \( \mathbf{S} \) if and only if the union of the corresponding sets \( S_j \) (for \( f_j \in T \)) equals \( U \).
+
+- The total weight of \( T \) is exactly \( |T| \), the number of freelancers selected.
+
+Therefore, a minimum-weight team in \( I' \) corresponds to a minimum set cover in \( I \). Since the transformation is polynomial-time (in fact, linear in the size of \( I \)), the Weighted Set Cover with Proficiency Constraints can solve the Set Cover problem.
+\end{proof}
+
+\begin{corollary}
+The Weighted Set Cover Problem with Proficiency Constraints is NP-hard.
+\end{corollary}
+\begin{proof}
+Since Set Cover is NP-hard \cite{kleinberg2005algorithmNP}, and the above reduction shows it is a special case of Weighted Set Cover with Proficiency Constraints (with all proficiencies and weights set to 1), the latter is also NP-hard.
+\end{proof}
+
 
 \section{Formal Input Model}
 
@@ -184,7 +224,9 @@ The brute-force algorithm has time complexity $O(\min(2^n, m) \cdot 2^{\min(2^n,
 Let $k = \min(2^n, m)$ be the number of distinct masks after reduction. The algorithm:
 
 1. Generates all subsets of masks: $\sum_{i=1}^k \binom{k}{i} = 2^k$ subsets
+
 2. For each subset, checks coverage: $O(n)$ operations
+
 3. For valid covers, computes cost: $O(k)$ operations
 
 Total time: $O(2^k \cdot (n + k)) = O(2^k \cdot k)$ since $k \geq n$ in non-trivial cases.
@@ -244,7 +286,7 @@ This analysis justifies our algorithmic approach and demonstrates that the expon
 
 \subsection{Greedy Algorithm Description}
 
-The greedy algorithm for the team selection problem iteratively selects the most cost-effective freelancer at each step, where cost-effectiveness is defined as the ratio of wage to the number of newly covered skills.
+The greedy algorithm \cite{kleinberg2005algorithmG} for the team selection problem iteratively selects the most cost-effective freelancer at each step, where cost-effectiveness is defined as the ratio of wage to the number of newly covered skills.
 
 \begin{algorithm}
 \caption{Greedy Team Selection Algorithm}
@@ -363,5 +405,8 @@ This approach leverages the greedy solution's quality to dramatically reduce the
 
 
 Alternatively, we could use the exact algorithm for small $n$ (most cases) and the greedy for the rest. The correct approach depends of the problem/use-case.
+
+\bibliographystyle{acm}
+\bibliography{references}
 
 \end{document}
